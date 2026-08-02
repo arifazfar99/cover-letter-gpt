@@ -94,7 +94,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const storagePath = `${user.id}/${file.name}`;
+  // Fixed per-user path (not filename-based) so re-uploading always
+  // overwrites the same Storage object instead of orphaning the old one.
+  const storagePath = `${user.id}/resume.pdf`;
   const admin = createAdminClient();
 
   const { error: uploadError } = await admin.storage
