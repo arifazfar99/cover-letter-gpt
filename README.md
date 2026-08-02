@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cover Letter GPT
 
-## Getting Started
+A personal, single-user tool that turns one resume into a tailored cover letter for every job application. Upload your resume once, paste in a job title, company, and description, and get a polished, ATS-friendly cover letter back — no re-uploading, no subscription tiers, no one else's account but yours.
 
-First, run the development server:
+## What it does
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Sign in** — gated behind a single Supabase Auth account. There's no public sign-up; this app is built for one person.
+- **Attach a resume once** — a PDF is parsed server-side and the extracted text is cached in the database. Every future letter reuses that cached text; re-uploading simply replaces it.
+- **Generate a letter** — give it a job title, company name, and job description, and it writes a letter grounded in your actual resume content via OpenAI.
+- **Copy or download** — the result is shown as a real letter (date, "Re:" line, formatted body) with one-click copy-to-clipboard and `.txt` download.
+
+## Tech stack
+
+- **Framework**: [Next.js 15](https://nextjs.org) (App Router), React 19, TypeScript
+- **Styling**: Tailwind CSS 4
+- **Auth, database & storage**: [Supabase](https://supabase.com) — Auth (email/password), Postgres, and Storage all in one project
+- **AI**: [OpenAI](https://platform.openai.com) (`gpt-5-mini`) via the official SDK
+- **PDF parsing**: [`pdf-parse`](https://www.npmjs.com/package/pdf-parse) v2 (the `PDFParse` class API, not the older v1 function API)
+
+Everything runs as a single Next.js app — API routes (`app/api/*`) replace what used to be a separate Express backend. No second server or process to manage.
+
+## Project structure
+
+```
+app/
+  api/
+    resume/route.ts     # POST: upload + parse + cache a resume. GET: current resume status
+    generate/route.ts   # POST: generate a cover letter from the cached resume + job details
+  login/page.tsx         # Sign-in page
+  page.tsx                # Server component — fetches resume status, renders the app
+  CoverLetterApp.tsx      # Main client component: upload, job form, result view
+  Logo.tsx                # Shared wordmark component
+lib/
+  supabase/
+    client.ts             # Browser Supabase client
+    server.ts              # Server Supabase client (Server Components / Route Handlers)
+    middleware.ts          # Session refresh + route protection
+    admin.ts                # Service-role client (Storage writes only)
+middleware.ts             # Applies auth gating to all routes except static assets
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Set up Supabase
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a Supabase project, then run this in the SQL editor:
 
-## Learn More
+```sql
+create table public.resumes (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  file_name text not null,
+  storage_path text not null,
+  parsed_text text not null,
+  updated_at timestamptz not null default now()
+);
 
-To learn more about Next.js, take a look at the following resources:
+alter table public.resumes enable row level security;
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+create policy "Users manage their own resume row"
+  on public.resumes
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Then, in the dashboard:
+- **Storage** → create a private bucket named `resumes`
+- **Authentication → Users** → manually add the one account you'll sign in with
+- **Authentication → Settings** → disable public sign-up (this app never exposes a sign-up flow, but it's good defense-in-depth)
 
-## Deploy on Vercel
+### 2. Configure environment variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Create `.env.local` in the project root:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+OPENAI_API_KEY=
+```
+
+### 3. Install and run
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to `/login`.
+
+## Notes
+
+- `pdf-parse` v2 depends on `pdfjs-dist`, which isn't meant to be webpack-bundled. `next.config.ts` sets `serverExternalPackages: ["pdf-parse"]` to keep it external — without this, PDF parsing throws at runtime. If you ever remove or change this, restart the dev server; `next.config.ts` changes aren't hot-reloaded.
+- The resume's raw PDF and parsed text are always stored at a fixed per-user path (`{userId}/resume.pdf` in Storage, one row per user in `resumes`), so re-uploading replaces the previous file rather than accumulating orphaned copies.
+
+## Deploy
+
+Deploys like any Next.js app (e.g. [Vercel](https://vercel.com/new)) — just set the four environment variables above in your hosting provider.
