@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #faf8f4;
+  --bg-dim: #f1ece2;
+  --surface: #ffffff;
+  --border: #e4ddcf;
+  --text: #14181f;
+  --text-muted: #5b6270;
+  --accent: #8c6a34;
+  --accent-strong: #6f5327;
+  --accent-soft: #efe1c4;
+  --accent-contrast: #ffffff;
+  --danger: #a23e2e;
+  --danger-soft: #f5e3df;
+  --success: #3f6b49;
+  --success-soft: #e1ebe2;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-letter: var(--font-plex-serif), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-dim: var(--bg-dim);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-letter: var(--font-letter);
+  --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #14161b;
+    --bg-dim: #1b1e24;
+    --surface: #21252c;
+    --border: #323740;
+    --text: #f1eee7;
+    --text-muted: #a6acb8;
+    --accent: #d8b876;
+    --accent-strong: #e7cb94;
+    --accent-soft: #3a331f;
+    --accent-contrast: #14161b;
+    --danger: #e2897a;
+    --danger-soft: #3a2420;
+    --success: #8fbb98;
+    --success-soft: #1f2e22;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes letter-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-letter-in {
+    animation: letter-in 0.45s ease-out;
+  }
+}
+
+.ruled-paper {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 1.7rem,
+    var(--border) 1.7rem,
+    var(--border) calc(1.7rem + 1px)
+  );
 }

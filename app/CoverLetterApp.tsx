@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Wordmark } from "./Logo";
 
 type ResumeInfo = {
   fileName: string;
@@ -41,13 +42,13 @@ export function CoverLetterApp({ initialResume }: { initialResume: ResumeInfo })
       const data = await res.json();
 
       if (!res.ok) {
-        setUploadError(data.error ?? "Failed to upload resume");
+        setUploadError(data.error ?? "Couldn't attach that resume. Try again.");
         return;
       }
 
       setResume({ fileName: data.fileName, updatedAt: data.updatedAt });
     } catch {
-      setUploadError("Failed to upload resume");
+      setUploadError("Couldn't attach that resume. Try again.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -69,13 +70,13 @@ export function CoverLetterApp({ initialResume }: { initialResume: ResumeInfo })
       const data = await res.json();
 
       if (!res.ok) {
-        setGenerateError(data.error ?? "Failed to generate cover letter");
+        setGenerateError(data.error ?? "Couldn't write the letter. Try again.");
         return;
       }
 
       setCoverLetter(data.coverLetter);
     } catch {
-      setGenerateError("Failed to generate cover letter");
+      setGenerateError("Couldn't write the letter. Try again.");
     } finally {
       setGenerating(false);
     }
@@ -106,108 +107,211 @@ export function CoverLetterApp({ initialResume }: { initialResume: ResumeInfo })
     router.refresh();
   }
 
+  const today = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
-    <div className="min-h-screen p-8 sm:p-16 max-w-2xl mx-auto flex flex-col gap-8">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Cover Letter GPT</h1>
+    <div className="min-h-screen">
+      <header className="flex items-center justify-between border-b border-border px-6 py-4 lg:px-12">
+        <Wordmark className="text-lg" markClassName="text-accent" />
         <button
           onClick={handleSignOut}
-          className="text-sm underline underline-offset-4 hover:no-underline"
+          className="rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:bg-bg-dim hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft"
         >
           Sign out
         </button>
       </header>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">Resume</h2>
-        {resume ? (
-          <p className="text-sm text-black/70 dark:text-white/70">
-            On file: <span className="font-medium">{resume.fileName}</span>{" "}
-            (updated {new Date(resume.updatedAt).toLocaleString()})
-          </p>
-        ) : (
-          <p className="text-sm text-black/70 dark:text-white/70">
-            No resume on file yet — upload a PDF to get started.
-          </p>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          onChange={handleFileChange}
-          disabled={uploading}
-          className="text-sm"
-        />
-        {uploading && <p className="text-sm">Uploading and parsing...</p>}
-        {uploadError && <p className="text-sm text-red-500">{uploadError}</p>}
-      </section>
+      <main className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-10 lg:grid-cols-[380px_1fr] lg:gap-12 lg:px-12 lg:py-14">
+        <div className="flex flex-col gap-8">
+          <section className="flex flex-col gap-3">
+            <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-text-muted">
+              Resume
+            </h2>
 
-      <form onSubmit={handleGenerate} className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium">Job details</h2>
+            {resume ? (
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4">
+                <DocumentIcon className="h-8 w-8 shrink-0 text-accent" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-text">{resume.fileName}</p>
+                  <p className="font-mono text-xs text-text-muted">
+                    Updated {new Date(resume.updatedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="shrink-0 text-sm font-medium text-accent underline-offset-4 hover:underline disabled:opacity-50"
+                >
+                  Replace
+                </button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-bg-dim px-4 py-8 text-center transition-colors hover:border-accent hover:bg-accent-soft/40">
+                <DocumentIcon className="h-8 w-8 text-text-muted" />
+                <span className="text-sm font-medium text-text">Attach your resume</span>
+                <span className="font-mono text-xs text-text-muted">PDF, up to 10MB</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleFileChange}
+                  disabled={uploading}
+                  className="sr-only"
+                />
+              </label>
+            )}
 
-        <label className="flex flex-col gap-1 text-sm">
-          Job title
-          <input
-            required
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            className="rounded border border-black/[.08] dark:border-white/[.145] bg-transparent px-3 py-2 text-sm"
-          />
-        </label>
+            {resume && (
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileChange}
+                disabled={uploading}
+                className="sr-only"
+              />
+            )}
 
-        <label className="flex flex-col gap-1 text-sm">
-          Company name
-          <input
-            required
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            className="rounded border border-black/[.08] dark:border-white/[.145] bg-transparent px-3 py-2 text-sm"
-          />
-        </label>
+            {uploading && (
+              <p className="font-mono text-xs text-text-muted">Reading your resume…</p>
+            )}
+            {uploadError && (
+              <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                {uploadError}
+              </p>
+            )}
+          </section>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Job description
-          <textarea
-            required
-            rows={6}
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            className="rounded border border-black/[.08] dark:border-white/[.145] bg-transparent px-3 py-2 text-sm"
-          />
-        </label>
+          <form onSubmit={handleGenerate} className="flex flex-col gap-4">
+            <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-text-muted">
+              Job details
+            </h2>
 
-        <button
-          type="submit"
-          disabled={!resume || generating}
-          className="rounded-full bg-foreground text-background font-medium text-sm h-10 disabled:opacity-50"
-        >
-          {generating ? "Generating..." : "Generate cover letter"}
-        </button>
-        {generateError && <p className="text-sm text-red-500">{generateError}</p>}
-      </form>
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Job title
+              <input
+                required
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-text outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent-soft"
+              />
+            </label>
 
-      {coverLetter && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium">Result</h2>
-          <pre className="whitespace-pre-wrap rounded border border-black/[.08] dark:border-white/[.145] p-4 text-sm font-sans">
-            {coverLetter}
-          </pre>
-          <div className="flex gap-3">
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Company name
+              <input
+                required
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-text outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent-soft"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Job description
+              <textarea
+                required
+                rows={7}
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-text outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent-soft"
+              />
+            </label>
+
             <button
-              onClick={handleCopy}
-              className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 h-9 text-sm"
+              type="submit"
+              disabled={!resume || generating}
+              className="mt-1 rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-bg-dim disabled:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             >
-              {copied ? "Copied!" : "Copy"}
+              {generating ? "Writing…" : "Write my letter"}
             </button>
-            <button
-              onClick={handleDownload}
-              className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 h-9 text-sm"
-            >
-              Download .txt
-            </button>
+            {generateError && (
+              <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                {generateError}
+              </p>
+            )}
+          </form>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-text-muted">
+              Your letter
+            </h2>
+            {coverLetter && (
+              <div className="flex gap-4">
+                <button
+                  onClick={handleCopy}
+                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+                >
+                  {copied ? "Copied" : "Copy text"}
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+                >
+                  Download .txt
+                </button>
+              </div>
+            )}
           </div>
-        </section>
-      )}
+
+          <div className="rounded-lg bg-[#ffffff] p-8 text-[#20242c] shadow-[0_1px_2px_rgba(20,24,31,0.06),0_8px_24px_rgba(20,24,31,0.08)] sm:p-12">
+            {generating ? (
+              <div className="flex flex-col gap-3">
+                {[100, 92, 96, 60, 100, 88, 40].map((width, i) => (
+                  <div
+                    key={i}
+                    className="h-3 rounded motion-safe:animate-pulse"
+                    style={{ width: `${width}%`, backgroundColor: "#EDEAE2" }}
+                  />
+                ))}
+              </div>
+            ) : coverLetter ? (
+              <div className="animate-letter-in flex flex-col gap-6">
+                <div className="flex flex-col gap-1 border-b border-[#e4ddcf] pb-4 font-mono text-xs uppercase tracking-widest text-[#8a8f99]">
+                  <span>{today}</span>
+                  <span>
+                    Re: {jobTitle} — {companyName}
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap font-letter text-[15px] leading-relaxed">
+                  {coverLetter}
+                </p>
+              </div>
+            ) : (
+              <div className="ruled-paper flex min-h-[24rem] items-start justify-center pt-16">
+                <p className="max-w-xs text-center font-letter italic text-[#9a9fa8]">
+                  Your tailored letter will appear here once you write one.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
+  );
+}
+
+function DocumentIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M14 3v5h5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M9 13h6M9 17h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   );
 }
